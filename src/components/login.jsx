@@ -1,30 +1,99 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function Login({setUserInfo}) {
+export default function Login({setUserInfo,setToken}) {
+    const navigate = useNavigate();
     const [user, setUser] = useState("");
     const [password, setPassword] = useState("");
-    const [image, setImage] = useState("");
+    const [image, setImage] = useState(null);
     const [signOn, setSignOn] = useState(false);
 
     function doSignIn(e) {
-        e.preventDefault();
-        setUserInfo("Hello")
+      e.preventDefault();
+      const formData = new FormData()
+      formData.append("name", user)
+      formData.append("password", password)
+      // let body ={
+      //   name: user, 
+      //   password: password
+      // }
+      let requestOptions = {
+        method: 'POST',
+        body: formData
+      };
+      if(image !=null){
+        formData.append("image", image)
+        requestOptions = {
+          method: 'POST',
+          body: formData
+        };
+      }
+      fetch(process.env.REACT_APP_BACKURL+ "user", requestOptions)
+      .then((response) => response.json())  
+      .then(
+        (data) => {
+          console.log(data)
+          setUserInfo(data);
+            const requestOptionsLogin = {
+              method: 'POST',
+              headers: {'Content-Type': 'application/x-www-form-urlencoded' , 'accept': 'application/json'},
+              body: new URLSearchParams({
+                'grant_type': '',
+                'username': user,
+                'password': password,
+                'scope': '',
+                'client_id': '',
+                'client_secret': ''
+            })
+            };
+            fetch(process.env.REACT_APP_BACKURL + "userlogin", requestOptionsLogin)
+            .then((response) => response.json())  
+            .then(
+              (data) => {
+                setToken("" + data.token_type + " " + data.access_token)
+                navigate("/dashboard")
+              }).catch(error=>console.log(error));
+        }).catch(error=>console.log(error));
     }
 
     function doLogIn(e) {
-        e.preventDefault();
-        setUserInfo("Hello")
+      e.preventDefault();
+      const requestOptionsLogin = {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded' , 'accept': 'application/json'},
+        body: new URLSearchParams({
+          'grant_type': '',
+          'username': user,
+          'password': password,
+          'scope': '',
+          'client_id': '',
+          'client_secret': ''
+      })
+      };
+      fetch(process.env.REACT_APP_BACKURL + "userlogin", requestOptionsLogin)
+      .then((response) => response.json())  
+      .then(
+        (data) => {
+          setToken("" + data.token_type + " " + data.access_token);
+          const requestOptionUser = {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' , 'Authorization' : ("" + data.token_type + " " + data.access_token)}
+          };
+          fetch(process.env.REACT_APP_BACKURL + "user", requestOptionUser)
+          .then((response) => response.json())  
+          .then(data => {
+            console.log(data)
+            setUserInfo(data) 
+            navigate("/dashboard")    
+          })
+          .catch((error)=>{
+            console.log(error)
+          })
+        })
+      .catch(error=>console.log(error));
     }
     return (
       <div className="h-screen bg-blue-950 flex">
-        {/*
-          This example requires updating your template:
-  
-          ```
-          <html class="h-full bg-white">
-          <body class="h-full">
-          ```
-        */}
         <div className="flex min-h-full flex-1 flex-col justify-center px-6 lg:px-8">
           <div className="">
             <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-white">
@@ -73,22 +142,15 @@ export default function Login({setUserInfo}) {
 
               {signOn? 
                 <div>
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="block text-sm font-medium leading-6 text-white">
-                    Image profile (Optional)
-                  </label>
-                </div>
-                <div className="mt-2">
-                  <input
-                    id="image"
-                    name="image"
-                    type="url"
-                    value={image}
-                    onChange={({ target }) => setImage(target.value)}
-                    autoComplete="image"
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  />
-                </div>
+                <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Upload file</label>
+                <input 
+                  id="image"
+                  name="image"
+                  type="file"
+                  onChange={({ target }) => setImage(target.files[0])}
+                  className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help"/>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-300" id="file_input_help">SVG, PNG, JPG or GIF (MAX. 800x400px).</p>
+
               </div>
               : <></>}
 
